@@ -6,7 +6,9 @@ More description follows.
 
 Loconet will be added in the (near) future.
 
-## test-setup with two boards
+## Test-setup
+
+See below for a test-setup with two boards (32 signals).
 
 ![test setup](./gfx/IMG_4392.JPEG "test-setup")
 
