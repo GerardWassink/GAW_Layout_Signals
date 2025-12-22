@@ -5,8 +5,14 @@
  * Purpose: Test model railroad signals over I2C
  * Versions:
  *   0.1  : Initial code base
+ *   0.2  : Code improved
+ *            modules now in array
+ *            simplified the code tremendously
+ *            
+ *            
+ *            
  *------------------------------------------------------------------------- */
-#define progVersion "0.1"  // Program version definition
+#define progVersion "0.2"  // Program version definition
 /* ------------------------------------------------------------------------- *
  *             GNU LICENSE CONDITIONS
  * ------------------------------------------------------------------------- *
@@ -47,26 +53,50 @@
 #endif
 
 
-//#include <Loconet.h>                        // Loconet library
+//#include <LocoNet.h>                        // Loconet library
 #include <EEPROM.h>                         // EEPROM library
 #include <Adafruit_MCP23X17.h>              // MCP23017 mux library library
 
-#define mcp1Addr 0x24                       // address of first mux MCP23017
-#define mcp2Addr mcp1Addr + 1               // address of second mux MCP23017
-#define mcp3Addr mcp1Addr + 2               // address of third mux MCP23017
-#define mcp4Addr mcp1Addr + 3               // address of fourth mux MCP23017
 
-Adafruit_MCP23X17 mcp1;
-Adafruit_MCP23X17 mcp2;
-Adafruit_MCP23X17 mcp3;
-Adafruit_MCP23X17 mcp4;
+/* ------------------------------------------------------------------------- *
+ * Below:
+ * 1. define the number of MCP23017 chips you want to address in numMcps
+ * 2. comment out the not used chips
+ * 3. change the mcp[] array to contain the first number of chips 
+ * 4. change the addresses in the mcpAdr[] array in the order they will 
+ *      be addressed
+ * ------------------------------------------------------------------------- */
+#define numMcps 6                           // number of chips in use
+
+Adafruit_MCP23X17 mcp0;                     // Individual chip definitions
+Adafruit_MCP23X17 mcp1;                     // Comment out not used spots
+Adafruit_MCP23X17 mcp2;                     //  "
+Adafruit_MCP23X17 mcp3;                     //   "
+Adafruit_MCP23X17 mcp4;                     //    "
+Adafruit_MCP23X17 mcp5;                     //     "
+//Adafruit_MCP23X17 mcp6;                     //      "
+//Adafruit_MCP23X17 mcp7;                     //       "
+
+
+/* ------------------------------------------------------------------------- *
+ *                                            Arrays for chips and addresses
+ * ------------------------------------------------------------------------- */
+Adafruit_MCP23X17 mcp[numMcps] =  { mcp0, mcp1, mcp2, mcp3, mcp4, mcp5 };
+int mcpAdr[numMcps] =  { 0x24, 0x25, 0x26, 0x27, 0x20, 0x21 }; 
+
+
+/* ------------------------------------------------------------------------- *
+ *                                                         Enumerated values
+ * ------------------------------------------------------------------------- */
+enum signalFace { RED, GREEN };
+
 
 /* ------------------------------------------------------------------------- *
  *                                                   Initial routine setup()
  * ------------------------------------------------------------------------- */
 void setup() {
 
-  delay(1000);
+  delay(1000);                              // delay before start
 
   debugstart(57600);
 
@@ -74,66 +104,28 @@ void setup() {
   debug("GAW_Layout_Signals v");
   debugln(progVersion);
   debugln();
-  debugln("Initalizing Multiplexers");
 
-  debugln("begin.wire mcp1");
-  Wire.begin(mcp1Addr);
-
-  if (!mcp1.begin_I2C(mcp1Addr)) {
-    debugln("mcp1 init error");
-    while(1);
+  debugln("---===### Initalizing Multiplexers ###===---");
+  for (int i = 0; i < numMcps; i++) {
+    debug("Initalizing module "); debug(i); debug(": addr="); debugln(mcpAdr[i]);
+    if ( !mcp[i].begin_I2C(mcpAdr[i]) ) {
+      debug("mcp"); debug(i); debugln(" init error");
+      while(1);
+    }
   }
 
-  debugln("begin.wire mpc2");
-  Wire.begin(mcp2Addr);
-
-  if (!mcp2.begin_I2C(mcp2Addr)) {
-    debugln("mcp2 init error");
-    while(1);
+                    debugln("Setting all pins to OUTPUT and switch them all off");
+                    debug("Modules: ");
+  for (int m = 0; m < numMcps; m++) {
+                    debug(m); debug(", ");
+    for (int i = 0; i<16; i++) {
+      mcp[m].pinMode(i, OUTPUT);
+      mcp[m].digitalWrite(i, LOW);
+    }
   }
+                    debugln();
 
-  debugln("begin.wire mpc3");
-  Wire.begin(mcp3Addr);
-
-  if (!mcp3.begin_I2C(mcp3Addr)) {
-    debugln("mcp3 init error");
-    while(1);
-  }
-
-  debugln("begin.wire mpc4");
-  Wire.begin(mcp4Addr);
-
-  if (!mcp4.begin_I2C(mcp4Addr)) {
-    debugln("mcp4 init error");
-    while(1);
-  }
-
-
-  debugln("Setting all pins to OUTPUT and switch them all off");
-  for (int i = 0; i<16; i++) {
-    mcp1.pinMode(i, OUTPUT);
-    mcp1.digitalWrite(i, LOW);
-
-    mcp2.pinMode(i, OUTPUT);
-    mcp2.digitalWrite(i, LOW);
-
-    mcp3.pinMode(i, OUTPUT);
-    mcp3.digitalWrite(i, LOW);
-
-    mcp4.pinMode(i, OUTPUT);
-    mcp4.digitalWrite(i, LOW);
-  }
-
-  debugln("---===### Set all signals Occupied ###===---");
-  for (int i = 1; i<33; i++) {
-    signalOccupied(i);
-  }
-
-  debugln("---===### Make signals 4 and 16 Clear ###===---");
-  signalClear(1);
-  signalClear(32);
-
-  debugln(); debugln("---===### ALL DONE ###===---");
+  debugln(); debugln("---===### INIT DONE ###===---");
 
 }
 
@@ -144,11 +136,14 @@ void setup() {
  * ------------------------------------------------------------------------- */
 void loop() {
 
-//  signalClear(1);
-//  delay(500);
-//  signalOccupied(1);
-//  delay(500);
+  int tim = 200;
 
+  for (int i = 16; i <=48; i += 16) {
+    signal(i, RED);
+    delay(tim);
+    signal(i, GREEN);
+    delay(tim);
+  }
 
 }
 
@@ -157,83 +152,27 @@ void loop() {
 /* ------------------------------------------------------------------------- *
  *                                                             SignalClear()
  * ------------------------------------------------------------------------- */
-void signalClear(int signalNum) {
+void signal(int signalNum, signalFace face) {
 
   int signal = signalNum - 1;               // to offset zero
   int module = signal >> 3;                 // which module?
-  int port = (signal << 1) % 16 ;           // determine port
+  int port   = (signal << 1) % 16;          // determine port
 
-  debug(" sigNum: ");  debug(signalNum);   debug(": ");
-  debug(" signal: "); debug(signal);      debug(":");
-  debug(" module: "); debug(module);      debug(":");
-  debug(" port: ");   debug(port);
-  debugln(" - sigClean");
+  switch (face) {
 
-  switch (module) {
-    case 0:
-      mcp1.digitalWrite(port, HIGH);
-      mcp1.digitalWrite(port+1, LOW);
+    case GREEN:
+      mcp[module].digitalWrite(port, HIGH);
+      mcp[module].digitalWrite(port+1, LOW);
       break;
 
-    case 1:
-      mcp2.digitalWrite(port, HIGH);
-      mcp2.digitalWrite(port+1, LOW);
-      break;
-
-    case 2:
-      mcp3.digitalWrite(port, HIGH);
-      mcp3.digitalWrite(port+1, LOW);
-      break;
-
-    case 3:
-      mcp4.digitalWrite(port, HIGH);
-      mcp4.digitalWrite(port+1, LOW);
+    case RED:
+      mcp[module].digitalWrite(port, LOW);
+      mcp[module].digitalWrite(port+1, HIGH);
       break;
 
     default:
       break;
+
   }
-}
 
-
-
-/* ------------------------------------------------------------------------- *
- *                                                          SignalOccupied()
- * ------------------------------------------------------------------------- */
-void signalOccupied(int signalNum) {
-
-  int signal = signalNum - 1;               // to offset zero
-  int module = signal >> 3;                 // which module?
-  int port = (signal << 1) % 16 +1;         // determine port
-
-  debug(" sigNum: "); debug(signalNum);   debug(": ");
-  debug(" signal: "); debug(signal);      debug(":");
-  debug(" module: "); debug(module);      debug(":");
-  debug(" port: ");   debug(port);
-  debugln(" - sigOccup");
-
-  switch (module) {
-    case 0:
-      mcp1.digitalWrite(port, HIGH);
-      mcp1.digitalWrite(port-1, LOW);
-      break;
-
-    case 1:
-      mcp2.digitalWrite(port, HIGH);
-      mcp2.digitalWrite(port-1, LOW);
-      break;
-
-    case 2:
-      mcp3.digitalWrite(port, HIGH);
-      mcp3.digitalWrite(port-1, LOW);
-      break;
-
-    case 3:
-      mcp4.digitalWrite(port, HIGH);
-      mcp4.digitalWrite(port-1, LOW);
-      break;
-
-    default:
-      break;
-  }
 }
