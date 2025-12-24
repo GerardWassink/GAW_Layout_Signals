@@ -8,11 +8,11 @@
  *   0.2  : Code improved
  *            modules now in array
  *            simplified the code tremendously
- *            
- *            
+ *   0.3  : Loconet built in for two aspect signals
+ *            working with switch addresses
  *            
  *------------------------------------------------------------------------- */
-#define progVersion "0.2"  // Program version definition
+#define progVersion "0.3"  // Program version definition
 /* ------------------------------------------------------------------------- *
  *             GNU LICENSE CONDITIONS
  * ------------------------------------------------------------------------- *
@@ -34,28 +34,12 @@
  *       Copyright (C) May 2024 Gerard Wassink
  * ------------------------------------------------------------------------- */
 
-
-/* ------------------------------------------------------------------------- *
- *                                                        DEBUGGING ON / OFF
- * Compiler directives to switch debugging on / off
- * Do not enable debug when not needed, Serial takes space and time!
- * ------------------------------------------------------------------------- */
-#define DEBUG 1
-
-#if DEBUG == 1
-#define debugstart(x) Serial.begin(x)
-#define debug(x) Serial.print(x)
-#define debugln(x) Serial.println(x)
-#else
-#define debugstart(x)
-#define debug(x)
-#define debugln(x)
-#endif
-
-
-//#include <LocoNet.h>                        // Loconet library
+#include <LocoNet.h>                        // Loconet library
 #include <EEPROM.h>                         // EEPROM library
 #include <Adafruit_MCP23X17.h>              // MCP23017 mux library library
+
+#include "GAW_LS_loconet.h"
+#include "GAW_Layout_Signals.h"
 
 
 /* ------------------------------------------------------------------------- *
@@ -86,9 +70,11 @@ int mcpAdr[numMcps] =  { 0x24, 0x25, 0x26, 0x27, 0x20, 0x21 };
 
 
 /* ------------------------------------------------------------------------- *
- *                                                         Enumerated values
+ *                                            Base signal addresses per chip
+ * each chip can handle 8 signals
+ * per layout module we allow for 16 signals
  * ------------------------------------------------------------------------- */
-enum signalFace { RED, GREEN };
+uint16_t baseAdr[numMcps] = {130, 230, 330, 430, 530, 630 }; // 730, 830...
 
 
 /* ------------------------------------------------------------------------- *
@@ -98,6 +84,8 @@ void setup() {
 
   delay(1000);                              // delay before start
 
+  LocoNet.init();                           // Initialize the LocoNet interface
+
   debugstart(57600);
 
   debugln("---===### START PROGRAM ###===---");
@@ -105,17 +93,18 @@ void setup() {
   debugln(progVersion);
   debugln();
 
+
   debugln("---===### Initalizing Multiplexers ###===---");
   for (int i = 0; i < numMcps; i++) {
-    debug("Initalizing module "); debug(i); debug(": addr="); debugln(mcpAdr[i]);
+    debug("Initalizing I2C module "); debug(i); debug(": addr="); debugln(mcpAdr[i]);
     if ( !mcp[i].begin_I2C(mcpAdr[i]) ) {
       debug("mcp"); debug(i); debugln(" init error");
       while(1);
     }
   }
 
-                    debugln("Setting all pins to OUTPUT and switch them all off");
-                    debug("Modules: ");
+  debugln("Setting all pins to OUTPUT and switch them all off");
+  debug("For module: ");
   for (int m = 0; m < numMcps; m++) {
                     debug(m); debug(", ");
     for (int i = 0; i<16; i++) {
@@ -123,9 +112,9 @@ void setup() {
       mcp[m].digitalWrite(i, LOW);
     }
   }
-                    debugln();
+  debugln();
 
-  debugln(); debugln("---===### INIT DONE ###===---");
+  debugln(); debugln("---===### INIT COMPLETE ###===---");
 
 }
 
@@ -133,24 +122,17 @@ void setup() {
 
 /* ------------------------------------------------------------------------- *
  *                                                     Repeating code loop()
+ * Go look if there are LocoNet messages to process
  * ------------------------------------------------------------------------- */
 void loop() {
-
-  int tim = 200;
-
-  for (int i = 16; i <=48; i += 16) {
-    signal(i, RED);
-    delay(tim);
-    signal(i, GREEN);
-    delay(tim);
-  }
-
+	processLocoNetMessage();                  // Process Loconet commands
 }
 
 
 
 /* ------------------------------------------------------------------------- *
- *                                                             SignalClear()
+ *                                                                  signal()
+ * Set a signal to RED (occupied) or GREEN (clear)
  * ------------------------------------------------------------------------- */
 void signal(int signalNum, signalFace face) {
 
@@ -160,12 +142,12 @@ void signal(int signalNum, signalFace face) {
 
   switch (face) {
 
-    case GREEN:
+    case CLEAR:
       mcp[module].digitalWrite(port, HIGH);
       mcp[module].digitalWrite(port+1, LOW);
       break;
 
-    case RED:
+    case OCCUPIED:
       mcp[module].digitalWrite(port, LOW);
       mcp[module].digitalWrite(port+1, HIGH);
       break;
