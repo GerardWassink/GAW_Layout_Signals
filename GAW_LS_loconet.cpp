@@ -18,7 +18,7 @@ lnMsg *LnPacket;
  * ------------------------------------------------------------------------- */
 void executeSignalAction(uint16_t Address, uint8_t Direction, uint8_t Output)
 {
-  Direction == THROWN ? signal(Address, OCCUPIED) : signal(Address, CLEAR);
+  Direction == OCCUPIED ? signal(Address, OCCUPIED) : signal(Address, CLEAR);
 }
 
 
@@ -41,7 +41,7 @@ void processLocoNetMessage()
  * ------------------------------------------------------------------------- */
 void notifySwitchRequest( uint16_t Address, uint8_t Output, uint8_t Direction )
 {
-  Serial.print(F("Signal Request: "));
+  Serial.print(F("Signal Request from LocoNet: "));
   Serial.print(Address, DEC);
   Serial.print(F(" - "));
   Serial.print(Direction ? F("Clear") : F("Occupied"));

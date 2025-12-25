@@ -6,11 +6,8 @@ Loconet has been added. The signals respond to switch messages.
 For my application I'm using a modular layout with 8 modules (60 x 120 cm each).
 Addresses are set up as follows:
 - M00 to M29 for actual switches
-- M30 to M59 for signals
+- M30 to M61 for signals
 where M is the module number.
-
-## To-Do
--Incoming signal (switch) addresses must be converted to a signal number
 
 ## Test-setup
 See below for a test-setup with two boards (32 signals).

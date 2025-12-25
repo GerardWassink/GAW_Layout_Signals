@@ -10,9 +10,14 @@
  *            simplified the code tremendously
  *   0.3  : Loconet built in for two aspect signals
  *            working with switch addresses
- *            
+ *   1.0  : Translation from sigal addresses to module and port numbers
+ *          Prepared for my four modules with designated signal addresses
+ *          Code cleanup
+ *          
+ *          Created relase 1.0
+ *          
  *------------------------------------------------------------------------- */
-#define progVersion "0.3"  // Program version definition
+#define progVersion "1.0"  // Program version definition
 /* ------------------------------------------------------------------------- *
  *             GNU LICENSE CONDITIONS
  * ------------------------------------------------------------------------- *
@@ -43,42 +48,82 @@
 
 
 /* ------------------------------------------------------------------------- *
+ * On every layout module there will be one arduino operating the signals
+ * Define the module for which the definitions below are meant
+ * ------------------------------------------------------------------------- */
+#define MODULE5
+//#define MODULE6
+//#define MODULE7
+//#define MODULE8
+
+
+/* ------------------------------------------------------------------------- *
  * Below:
  * 1. define the number of MCP23017 chips you want to address in numMcps
+ *      (two per MCP23017 board, see README)
  * 2. comment out the not used chips
- * 3. change the mcp[] array to contain the first number of chips 
+ * 3. change the mcp[] array to contain the number of chips 
  * 4. change the addresses in the mcpAdr[] array in the order they will 
  *      be addressed
  * ------------------------------------------------------------------------- */
-#define numMcps 6                           // number of chips in use
+#define numMcps   4                         // number of MCP23017 chips in use
+#define numPerMcp 8                         // number of signals per mcp
 
 Adafruit_MCP23X17 mcp0;                     // Individual chip definitions
 Adafruit_MCP23X17 mcp1;                     // Comment out not used spots
 Adafruit_MCP23X17 mcp2;                     //  "
 Adafruit_MCP23X17 mcp3;                     //   "
-Adafruit_MCP23X17 mcp4;                     //    "
-Adafruit_MCP23X17 mcp5;                     //     "
-//Adafruit_MCP23X17 mcp6;                     //      "
-//Adafruit_MCP23X17 mcp7;                     //       "
 
 
 /* ------------------------------------------------------------------------- *
  *                                            Arrays for chips and addresses
  * ------------------------------------------------------------------------- */
-Adafruit_MCP23X17 mcp[numMcps] =  { mcp0, mcp1, mcp2, mcp3, mcp4, mcp5 };
-int mcpAdr[numMcps] =  { 0x24, 0x25, 0x26, 0x27, 0x20, 0x21 }; 
-
+Adafruit_MCP23X17 mcp[numMcps] =  { mcp0, mcp1, mcp2, mcp3 };
+int mcpAdr[numMcps] =  { 0x24, 0x25, 0x26, 0x27 }; 
 
 /* ------------------------------------------------------------------------- *
- *                                            Base signal addresses per chip
+ *                                                 Signal addresses per chip
  * each chip can handle 8 signals
- * per layout module we allow for 16 signals
+ * on each layout module we allow for max 32 signals (i.e. 2 MCP23017 boards)
+ *
+ * ==>> signal addresses start at M30, M being the layout module number <<==
+ *
  * ------------------------------------------------------------------------- */
-uint16_t baseAdr[numMcps] = {130, 230, 330, 430, 530, 630 }; // 730, 830...
+#ifdef MODULE5
+int signals[numMcps][8] = { {530, 531, 532, 533, 534, 535, 536, 537},
+                            {538, 539, 540, 541, 542, 543, 544, 545},
+                            {546, 547, 548, 549, 550, 551, 552, 553},
+                            {554, 555, 556, 557, 558, 559, 560, 561}
+                          };
+#endif
+
+#ifdef MODULE6
+int signals[numMcps][8] = { {630, 631, 632, 633, 634, 635, 636, 637},
+                            {638, 639, 640, 641, 642, 643, 644, 645},
+                            {646, 647, 648, 649, 650, 651, 652, 653},
+                            {654, 655, 656, 657, 658, 659, 660, 661}
+                          };
+#endif
+
+#ifdef MODULE7
+int signals[numMcps][8] = { {730, 731, 732, 733, 734, 735, 736, 737},
+                            {738, 739, 740, 741, 742, 743, 744, 745},
+                            {746, 747, 748, 749, 750, 751, 752, 753},
+                            {754, 755, 756, 757, 758, 759, 760, 761}
+                          };
+#endif
+
+#ifdef MODULE8
+int signals[numMcps][8] = { {830, 831, 832, 833, 834, 835, 836, 837},
+                            {838, 839, 840, 841, 842, 843, 844, 845},
+                            {846, 847, 848, 849, 850, 851, 852, 853},
+                            {854, 855, 856, 857, 858, 859, 860, 861}
+                          };
+#endif
 
 
 /* ------------------------------------------------------------------------- *
- *                                                   Initial routine setup()
+ * Initial routine                                                   setup()
  * ------------------------------------------------------------------------- */
 void setup() {
 
@@ -121,7 +166,7 @@ void setup() {
 
 
 /* ------------------------------------------------------------------------- *
- *                                                     Repeating code loop()
+ * Repeating code                                                     loop()
  * Go look if there are LocoNet messages to process
  * ------------------------------------------------------------------------- */
 void loop() {
@@ -135,26 +180,41 @@ void loop() {
  * Set a signal to RED (occupied) or GREEN (clear)
  * ------------------------------------------------------------------------- */
 void signal(int signalNum, signalFace face) {
+  
+  int port;
 
-  int signal = signalNum - 1;               // to offset zero
-  int module = signal >> 3;                 // which module?
-  int port   = (signal << 1) % 16;          // determine port
+  for (int module = 0; module < numMcps; module++) {  // Walk through modules
 
-  switch (face) {
+    for (int n = 0; n < numPerMcp; n++) {             // Search signal in module
 
-    case CLEAR:
-      mcp[module].digitalWrite(port, HIGH);
-      mcp[module].digitalWrite(port+1, LOW);
-      break;
+      if (signalNum == signals[module][n]) {          // found?
 
-    case OCCUPIED:
-      mcp[module].digitalWrite(port, LOW);
-      mcp[module].digitalWrite(port+1, HIGH);
-      break;
+        port = n << 1;                                // Calculate port number
 
-    default:
-      break;
+        debug("==> signalNum: "); debug(signalNum);
+        debug(" module: ");       debug(module);
+        debug(" port: ");         debug(port);      debugln();
 
+        switch (face) {                               // What to do ?
+
+          case CLEAR:
+            mcp[module].digitalWrite(port, HIGH);
+            mcp[module].digitalWrite(port+1, LOW);
+            break;
+
+          case OCCUPIED:
+            mcp[module].digitalWrite(port, LOW);
+            mcp[module].digitalWrite(port+1, HIGH);
+            break;
+
+          default:
+            break;
+
+        }
+
+        continue;                                     // break from loops
+
+      }
+    }
   }
-
 }

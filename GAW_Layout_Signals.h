@@ -28,8 +28,11 @@
 #define debugln(x)
 #endif
 
+
 enum signalFace { OCCUPIED, CLEAR };        // Enumerated values
 
+
 void signal(int signalNum, signalFace face);
+
 
 #endif
