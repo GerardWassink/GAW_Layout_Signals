@@ -4,7 +4,7 @@ With this sketch and 4 of my [MCP23017 boards](https://github.com/GerardWassink/
 
 Loconet has been added. The signals respond to switch messages.
 For my application I'm using a modular layout with 8 modules (60 x 120 cm each).
-Addresses are set up as follows:
+Addresses are set up per module as follows:
 - M00 to M29 for actual switches
 - M30 to M61 for signals
 where M is the module number.

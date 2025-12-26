@@ -10,13 +10,12 @@
 #ifndef GAW_LAYOUT_SIGNALS
 #define GAW_LAYOUT_SIGNALS
 
-
 /* ------------------------------------------------------------------------- *
  *                                                        DEBUGGING ON / OFF
  * Compiler directives to switch debugging on / off
  * Do not enable debug when not needed, Serial takes space and time!
  * ------------------------------------------------------------------------- */
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG == 1
 #define debugstart(x) Serial.begin(x)
@@ -28,11 +27,8 @@
 #define debugln(x)
 #endif
 
-
 enum signalFace { OCCUPIED, CLEAR };        // Enumerated values
 
-
 void signal(int signalNum, signalFace face);
-
 
 #endif

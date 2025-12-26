@@ -2,7 +2,7 @@
  * Name   : GAW_Layout_Signals
  * Author : Gerard Wassink
  * Date   : December 2025
- * Purpose: Test model railroad signals over I2C
+ * Purpose: Model railroad signals over I2C
  * Versions:
  *   0.1  : Initial code base
  *   0.2  : Code improved
@@ -16,8 +16,10 @@
  *          
  *          Created relase 1.0
  *          
+ *   1.1  : Layout module definitions moved to seperate .h files
+ *          
  *------------------------------------------------------------------------- */
-#define progVersion "1.0"  // Program version definition
+#define progVersion "1.1"  // Program version definition
 /* ------------------------------------------------------------------------- *
  *             GNU LICENSE CONDITIONS
  * ------------------------------------------------------------------------- *
@@ -43,83 +45,41 @@
 #include <EEPROM.h>                         // EEPROM library
 #include <Adafruit_MCP23X17.h>              // MCP23017 mux library library
 
-#include "GAW_LS_loconet.h"
-#include "GAW_Layout_Signals.h"
-
 
 /* ------------------------------------------------------------------------- *
  * On every layout module there will be one arduino operating the signals
- * Define the module for which the definitions below are meant
+ * depending on the number of siganls there will be one or two MCP23017 boards
+ * with respectively 2 or 4 MCP23017 chips.
+ * The definitions per layout module have been put into seperate .h files.
+ * Define the layout module for which the definitions are meant below:
  * ------------------------------------------------------------------------- */
 #define MODULE5
 //#define MODULE6
 //#define MODULE7
 //#define MODULE8
 
-
 /* ------------------------------------------------------------------------- *
- * Below:
- * 1. define the number of MCP23017 chips you want to address in numMcps
- *      (two per MCP23017 board, see README)
- * 2. comment out the not used chips
- * 3. change the mcp[] array to contain the number of chips 
- * 4. change the addresses in the mcpAdr[] array in the order they will 
- *      be addressed
+ * Include the layout module definition
  * ------------------------------------------------------------------------- */
-#define numMcps   4                         // number of MCP23017 chips in use
-#define numPerMcp 8                         // number of signals per mcp
+#if defined(MODULE5)
+#include "GAW_LS_Module_5.h"
 
-Adafruit_MCP23X17 mcp0;                     // Individual chip definitions
-Adafruit_MCP23X17 mcp1;                     // Comment out not used spots
-Adafruit_MCP23X17 mcp2;                     //  "
-Adafruit_MCP23X17 mcp3;                     //   "
+#elif defined(MODULE6)
+#include "GAW_LS_Module_6.h"
+
+#elif defined(MODULE7)
+#include "GAW_LS_Module_7.h"
+
+#elif defined(MODULE8)
+#include "GAW_LS_Module_8.h"
+#endif
 
 
 /* ------------------------------------------------------------------------- *
- *                                            Arrays for chips and addresses
+ * Include further definitions
  * ------------------------------------------------------------------------- */
-Adafruit_MCP23X17 mcp[numMcps] =  { mcp0, mcp1, mcp2, mcp3 };
-int mcpAdr[numMcps] =  { 0x24, 0x25, 0x26, 0x27 }; 
-
-/* ------------------------------------------------------------------------- *
- *                                                 Signal addresses per chip
- * each chip can handle 8 signals
- * on each layout module we allow for max 32 signals (i.e. 2 MCP23017 boards)
- *
- * ==>> signal addresses start at M30, M being the layout module number <<==
- *
- * ------------------------------------------------------------------------- */
-#ifdef MODULE5
-int signals[numMcps][8] = { {530, 531, 532, 533, 534, 535, 536, 537},
-                            {538, 539, 540, 541, 542, 543, 544, 545},
-                            {546, 547, 548, 549, 550, 551, 552, 553},
-                            {554, 555, 556, 557, 558, 559, 560, 561}
-                          };
-#endif
-
-#ifdef MODULE6
-int signals[numMcps][8] = { {630, 631, 632, 633, 634, 635, 636, 637},
-                            {638, 639, 640, 641, 642, 643, 644, 645},
-                            {646, 647, 648, 649, 650, 651, 652, 653},
-                            {654, 655, 656, 657, 658, 659, 660, 661}
-                          };
-#endif
-
-#ifdef MODULE7
-int signals[numMcps][8] = { {730, 731, 732, 733, 734, 735, 736, 737},
-                            {738, 739, 740, 741, 742, 743, 744, 745},
-                            {746, 747, 748, 749, 750, 751, 752, 753},
-                            {754, 755, 756, 757, 758, 759, 760, 761}
-                          };
-#endif
-
-#ifdef MODULE8
-int signals[numMcps][8] = { {830, 831, 832, 833, 834, 835, 836, 837},
-                            {838, 839, 840, 841, 842, 843, 844, 845},
-                            {846, 847, 848, 849, 850, 851, 852, 853},
-                            {854, 855, 856, 857, 858, 859, 860, 861}
-                          };
-#endif
+#include "GAW_LS_loconet.h"
+#include "GAW_Layout_Signals.h"
 
 
 /* ------------------------------------------------------------------------- *
@@ -131,19 +91,19 @@ void setup() {
 
   LocoNet.init();                           // Initialize the LocoNet interface
 
-  debugstart(57600);
+  Serial.begin(57600);
 
-  debugln("---===### START PROGRAM ###===---");
-  debug("GAW_Layout_Signals v");
-  debugln(progVersion);
-  debugln();
+  Serial.println("---===### START PROGRAM ###===---");
+  Serial.print("GAW_Layout_Signals v");
+  Serial.println(progVersion);
+  Serial.println();
 
 
-  debugln("---===### Initalizing Multiplexers ###===---");
+  Serial.println("---===### Initalizing Multiplexers ###===---");
   for (int i = 0; i < numMcps; i++) {
-    debug("Initalizing I2C module "); debug(i); debug(": addr="); debugln(mcpAdr[i]);
+    Serial.print("Initalizing I2C module "); Serial.print(i); Serial.print(": addr="); Serial.println(mcpAdr[i]);
     if ( !mcp[i].begin_I2C(mcpAdr[i]) ) {
-      debug("mcp"); debug(i); debugln(" init error");
+      Serial.print("mcp"); Serial.print(i); Serial.println(" init error");
       while(1);
     }
   }
@@ -159,7 +119,8 @@ void setup() {
   }
   debugln();
 
-  debugln(); debugln("---===### INIT COMPLETE ###===---");
+  Serial.println();
+  Serial.println("---===### INIT COMPLETE ###===---");
 
 }
 
