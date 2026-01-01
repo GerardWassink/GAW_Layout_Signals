@@ -17,9 +17,11 @@
  *          Created relase 1.0
  *          
  *   1.1  : Layout module definitions moved to seperate .h files
+ *   1.2  : Built in the LibPrintf library to sustitute Serial.print
+ *            and add the printf placeholders like %s, %i, %x etc.
  *          
  *------------------------------------------------------------------------- */
-#define progVersion "1.1"  // Program version definition
+#define progVersion "1.2"  // Program version definition
 /* ------------------------------------------------------------------------- *
  *             GNU LICENSE CONDITIONS
  * ------------------------------------------------------------------------- *
@@ -45,6 +47,9 @@
 #include <EEPROM.h>                         // EEPROM library
 #include <Adafruit_MCP23X17.h>              // MCP23017 mux library library
 
+#include "GAW_LS_loconet.h"
+#include "GAW_Layout_Signals.h"
+
 
 /* ------------------------------------------------------------------------- *
  * On every layout module there will be one arduino operating the signals
@@ -62,24 +67,15 @@
  * Include the layout module definition
  * ------------------------------------------------------------------------- */
 #if defined(MODULE5)
-#include "GAW_LS_Module_5.h"
-
+  #include "GAW_LS_Module_5.h"
 #elif defined(MODULE6)
-#include "GAW_LS_Module_6.h"
-
+  #include "GAW_LS_Module_6.h"
 #elif defined(MODULE7)
-#include "GAW_LS_Module_7.h"
-
+  #include "GAW_LS_Module_7.h"
 #elif defined(MODULE8)
-#include "GAW_LS_Module_8.h"
+  #include "GAW_LS_Module_8.h"
 #endif
 
-
-/* ------------------------------------------------------------------------- *
- * Include further definitions
- * ------------------------------------------------------------------------- */
-#include "GAW_LS_loconet.h"
-#include "GAW_Layout_Signals.h"
 
 
 /* ------------------------------------------------------------------------- *
@@ -93,34 +89,28 @@ void setup() {
 
   Serial.begin(57600);
 
-  Serial.println("---===### START PROGRAM ###===---");
-  Serial.print("GAW_Layout_Signals v");
-  Serial.println(progVersion);
-  Serial.println();
+  printf("---===### START PROGRAM ###===---\n");
+  printf("GAW_Layout_Signals v%s\n\n", progVersion);
 
-
-  Serial.println("---===### Initalizing Multiplexers ###===---");
+  printf("---===### Initalizing Multiplexers ###===---\n");
   for (int i = 0; i < numMcps; i++) {
-    Serial.print("Initalizing I2C module "); Serial.print(i); Serial.print(": addr="); Serial.println(mcpAdr[i]);
+    printf("Initalizing I2C module %d: addr=0x%x\n", i, mcpAdr[i]);
     if ( !mcp[i].begin_I2C(mcpAdr[i]) ) {
-      Serial.print("mcp"); Serial.print(i); Serial.println(" init error");
+      printf("mcp %i - init error\n", i);
       while(1);
     }
   }
 
-  debugln("Setting all pins to OUTPUT and switch them all off");
-  debug("For module: ");
+  printf("\nSetting pins to OUTPUT and turn them off\n");
+  printf("For modules: ");
   for (int m = 0; m < numMcps; m++) {
-                    debug(m); debug(", ");
+    printf("0x%x ", mcpAdr[m]);
     for (int i = 0; i<16; i++) {
       mcp[m].pinMode(i, OUTPUT);
       mcp[m].digitalWrite(i, LOW);
     }
   }
-  debugln();
-
-  Serial.println();
-  Serial.println("---===### INIT COMPLETE ###===---");
+  printf("\n\n---===### INIT COMPLETE ###===---\n\n");
 
 }
 
@@ -152,9 +142,7 @@ void signal(int signalNum, signalFace face) {
 
         port = n << 1;                                // Calculate port number
 
-        debug("==> signalNum: "); debug(signalNum);
-        debug(" module: ");       debug(module);
-        debug(" port: ");         debug(port);      debugln();
+        printf("==> signalNum: %d module: 0x%02x port: %d\n", signalNum, mcpAdr[module], port);
 
         switch (face) {                               // What to do ?
 

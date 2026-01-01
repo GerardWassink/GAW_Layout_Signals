@@ -41,12 +41,7 @@ void processLocoNetMessage()
  * ------------------------------------------------------------------------- */
 void notifySwitchRequest( uint16_t Address, uint8_t Output, uint8_t Direction )
 {
-  Serial.print(F("Signal Request from LocoNet: "));
-  Serial.print(Address, DEC);
-  Serial.print(F(" - "));
-  Serial.print(Direction ? F("Clear") : F("Occupied"));
-  Serial.print(F(" - "));
-  Serial.println(Output ? F("On") : F("Off"));  
+  printf("Signal Request from LocoNet: %d - %s - %s\n", Address, Direction ? "Clear" : "Occupied", Output ? "On" : "Off" );
 
   executeSignalAction(Address, Direction, Output);
 }

@@ -7,7 +7,6 @@
  * 
  * ------------------------------------------------------------------------- */
 
-#include <Arduino.h>
 #include "GAW_Layout_Signals.h"
 
 #ifndef LOCONET_H
